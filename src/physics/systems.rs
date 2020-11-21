@@ -15,13 +15,13 @@ use rapier::pipeline::PhysicsPipeline;
 /// System responsible for creating a Rapier rigid-body and collider from their
 /// builder resources.
 pub fn create_body_and_collider_system(
-    mut commands: Commands,
+    commands: &mut Commands,
     mut bodies: ResMut<RigidBodySet>,
     mut colliders: ResMut<ColliderSet>,
     mut entity_maps: ResMut<EntityMaps>,
-    standalone_body_query: Query<Without<ColliderBuilder, (Entity, &RigidBodyBuilder)>>,
+    standalone_body_query: Query<(Entity, &RigidBodyBuilder), Without<ColliderBuilder>>,
     body_and_collider_query: Query<(Entity, &RigidBodyBuilder, &ColliderBuilder)>,
-    parented_collider_query: Query<Without<RigidBodyBuilder, (Entity, &Parent, &ColliderBuilder)>>,
+    parented_collider_query: Query<(Entity, &Parent, &ColliderBuilder), Without<RigidBodyBuilder>>,
 ) {
     for (entity, body_builder) in standalone_body_query.iter() {
         let handle = bodies.insert(body_builder.build());
@@ -149,7 +149,7 @@ fn test_create_body_and_collider_system() {
 
 /// System responsible for creating Rapier joints from their builder resources.
 pub fn create_joints_system(
-    mut commands: Commands,
+    commands: &mut Commands,
     mut bodies: ResMut<RigidBodySet>,
     mut joints: ResMut<JointSet>,
     mut entity_maps: ResMut<EntityMaps>,
@@ -191,7 +191,7 @@ pub fn step_world_system(
         events.clear();
     }
 
-    sim_to_render_time.diff += time.delta_seconds;
+    sim_to_render_time.diff += time.delta_seconds();
 
     let sim_dt = integration_parameters.dt();
     while sim_to_render_time.diff >= sim_dt {
@@ -232,8 +232,8 @@ pub fn step_world_system(
 #[cfg(feature = "dim2")]
 fn sync_transform_2d(pos: Isometry<f32>, scale: f32, transform: &mut Mut<Transform>) {
     // Do not touch the 'z' part of the translation, used in Bevy for 2d layering
-    *transform.translation.x_mut() = pos.translation.vector.x * scale;
-    *transform.translation.y_mut() = pos.translation.vector.y * scale;
+    transform.translation.x = pos.translation.vector.x * scale;
+    transform.translation.y = pos.translation.vector.y * scale;
 
     let rot = na::UnitQuaternion::new(na::Vector3::z() * pos.rotation.angle());
     transform.rotation = Quat::from_xyzw(rot.i, rot.j, rot.k, rot.w);
@@ -266,7 +266,8 @@ pub fn sync_transform_system(
         &mut Transform,
     )>,
     mut direct_query: Query<
-        Without<PhysicsInterpolationComponent, (&RigidBodyHandleComponent, &mut Transform)>,
+        (&RigidBodyHandleComponent, &mut Transform),
+        Without<PhysicsInterpolationComponent>,
     >,
 ) {
     let dt = sim_to_render_time.diff;
@@ -298,7 +299,7 @@ pub fn sync_transform_system(
 /// System responsible for removing joints, colliders, and bodies that have
 /// been removed from the scene
 pub fn destroy_body_and_collider_system(
-    mut commands: Commands,
+    commands: &mut Commands,
     mut bodies: ResMut<RigidBodySet>,
     mut colliders: ResMut<ColliderSet>,
     mut joints: ResMut<JointSet>,

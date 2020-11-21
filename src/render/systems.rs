@@ -9,14 +9,15 @@ use rapier::geometry::{ColliderSet, ShapeType};
 
 /// System responsible for attaching a PbrComponents to each entity having a collider.
 pub fn create_collider_renders_system(
-    mut commands: Commands,
+    commands: &mut Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     configuration: Res<RapierConfiguration>,
     bodies: Res<RigidBodySet>,
     colliders: ResMut<ColliderSet>,
     query: Query<
-        Without<Handle<Mesh>, (Entity, &ColliderHandleComponent, Option<&RapierRenderColor>)>,
+        (Entity, &ColliderHandleComponent, Option<&RapierRenderColor>),
+        Without<Handle<Mesh>>,
     >,
 ) {
     let ground_color = Color::rgb(
@@ -123,7 +124,7 @@ pub fn create_collider_renders_system(
                 // However PbrComponents automatically adds a Scale component. So
                 // we add each of its field manually except for Scale.
                 // That's a bit messy so surely there is a better way?
-                let ground_pbr = PbrComponents {
+                let ground_pbr = PbrBundle {
                     mesh: meshes.add(mesh),
                     material: materials.add(color.into()),
                     transform: Transform::from_scale(scale),
